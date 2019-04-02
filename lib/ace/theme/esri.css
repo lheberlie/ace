@@ -1,8 +1,7 @@
 /* CSS style content from ace's github theme. */
 
 .ace_editor {
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier,
-    monospace !default;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace !default;
   font-size: 12px;
 }
 .ace-esri .ace_gutter {
