@@ -1,6 +1,6 @@
 exports.isDark = false;
-exports.cssClass = 'ace-esri';
-exports.cssText = require('../requirejs/text!./esri.css');
+exports.cssClass = "ace-esri";
+exports.cssText = require("./esri.css");
 
-var dom = require('../lib/dom');
+var dom = require("../lib/dom");
 dom.importCssString(exports.cssText, exports.cssClass);
