@@ -67,6 +67,7 @@ oop.inherits(Mode, TextMode);
     };
 
     this.$id = "ace/mode/html_esri";
+    this.snippetFileId = "ace/snippets/html_esri";
 }.call(Mode.prototype));
 
 exports.Mode = Mode;
