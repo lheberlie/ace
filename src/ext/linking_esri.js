@@ -1,4 +1,4 @@
-var Editor = require("ace/editor").Editor;
+var Editor = require("../editor").Editor;
 var TokenTooltip = require("ace/ext/token_tooltip_esri").TokenTooltip;
 
 require("../config").defineOptions(Editor.prototype, "editor", {
