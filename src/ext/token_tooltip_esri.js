@@ -1,10 +1,10 @@
-'use strict';
+"use strict";
 
-var dom = require('ace/lib/dom');
-var oop = require('ace/lib/oop');
-var event = require('ace/lib/event');
-var Range = require('ace/range').Range;
-var Tooltip = require('ace/tooltip').Tooltip;
+var dom = require("ace/lib/dom");
+var oop = require("ace/lib/oop");
+var event = require("ace/lib/event");
+var Range = require("ace/range").Range;
+var Tooltip = require("ace/tooltip").Tooltip;
 
 function TokenTooltip(editor) {
     if (editor.tokenTooltip) return;
@@ -15,8 +15,8 @@ function TokenTooltip(editor) {
     this.update = this.update.bind(this);
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseOut = this.onMouseOut.bind(this);
-    event.addListener(editor.renderer.scroller, 'mousemove', this.onMouseMove);
-    event.addListener(editor.renderer.content, 'mouseout', this.onMouseOut);
+    event.addListener(editor.renderer.scroller, "mousemove", this.onMouseMove);
+    event.addListener(editor.renderer.content, "mouseout", this.onMouseOut);
 }
 
 oop.inherits(TokenTooltip, Tooltip);
@@ -48,36 +48,36 @@ oop.inherits(TokenTooltip, Tooltip);
 
         if (!token && !session.getLine(docPos.row)) {
             token = {
-                type: '',
-                value: '',
+                type: "",
+                value: "",
                 state: session.bgTokenizer.getState(0)
             };
         }
         if (!token || !/esri[-\w]+href/.test(token.type)) {
-            this.editor.renderer.setCursorStyle('');
+            this.editor.renderer.setCursorStyle("");
             session.removeMarker(this.marker);
             this.hide();
             return;
         }
 
-        this.editor.renderer.setCursorStyle('pointer');
+        this.editor.renderer.setCursorStyle("pointer");
 
         var tokenText = token.type;
-        if (token.state) tokenText += '|' + token.state;
-        if (token.merge) tokenText += '\n  merge';
-        if (token.stateTransitions) tokenText += '\n  ' + token.stateTransitions.join('\n  ');
+        if (token.state) tokenText += "|" + token.state;
+        if (token.merge) tokenText += "\n  merge";
+        if (token.stateTransitions) tokenText += "\n  " + token.stateTransitions.join("\n  ");
 
-        var tooltipMessage = ' see item';
+        var tooltipMessage = " see item";
         if (/esri-mid-href/i.test(token.type)) {
-            tooltipMessage = ' see API Reference';
+            tooltipMessage = " see API Reference";
         } else if (/esri-url-href/i.test(token.type)) {
-            tooltipMessage = ' open link';
+            tooltipMessage = " open link";
         }
 
         if (/mac/i.test(navigator.userAgent)) {
-            tokenText = 'Cmd + click to' + tooltipMessage;
+            tokenText = "Cmd + click to" + tooltipMessage;
         } else {
-            tokenText = 'Ctrl + click to' + tooltipMessage;
+            tokenText = "Ctrl + click to" + tooltipMessage;
         }
 
         if (this.tokenText != tokenText) {
@@ -92,7 +92,7 @@ oop.inherits(TokenTooltip, Tooltip);
         this.token = token;
         session.removeMarker(this.marker);
         this.range = new Range(docPos.row, token.start, docPos.row, token.start + token.value.length);
-        this.marker = session.addMarker(this.range, 'ace_bracket', 'text');
+        this.marker = session.addMarker(this.range, "ace_bracket", "text");
     };
 
     this.onMouseMove = function (e) {
@@ -121,8 +121,8 @@ oop.inherits(TokenTooltip, Tooltip);
 
     this.destroy = function () {
         this.onMouseOut();
-        event.removeListener(this.editor.renderer.scroller, 'mousemove', this.onMouseMove);
-        event.removeListener(this.editor.renderer.content, 'mouseout', this.onMouseOut);
+        event.removeListener(this.editor.renderer.scroller, "mousemove", this.onMouseMove);
+        event.removeListener(this.editor.renderer.content, "mouseout", this.onMouseOut);
         delete this.editor.tokenTooltip;
     };
 }.call(TokenTooltip.prototype));
