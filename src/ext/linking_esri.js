@@ -1,5 +1,5 @@
 var Editor = require("../editor").Editor;
-var TokenTooltip = require("ace/ext/token_tooltip_esri").TokenTooltip;
+var TokenTooltip = require("./token_tooltip_esri").TokenTooltip;
 
 require("../config").defineOptions(Editor.prototype, "editor", {
     enableLinking: {
