@@ -1,16 +1,16 @@
-var Editor = require('ace/editor').Editor;
-var TokenTooltip = require('ace/ext/token_tooltip_esri').TokenTooltip;
+var Editor = require("ace/editor").Editor;
+var TokenTooltip = require("ace/ext/token_tooltip_esri").TokenTooltip;
 
-require('../config').defineOptions(Editor.prototype, 'editor', {
+require("../config").defineOptions(Editor.prototype, "editor", {
     enableLinking: {
-        set: function (val) {
+        set: function(val) {
             if (val) {
-                this.on('click', onClick);
-                this.on('mousemove', onMouseMove);
+                this.on("click", onClick);
+                this.on("mousemove", onMouseMove);
                 new TokenTooltip(this);
             } else {
-                this.off('click', onClick);
-                this.off('mousemove', onMouseMove);
+                this.off("click", onClick);
+                this.off("mousemove", onMouseMove);
             }
         },
         value: false
@@ -30,12 +30,12 @@ function onMouseMove(e) {
         var token = session.getTokenAt(docPos.row, docPos.column);
 
         if (exports.previousLinkingHover && exports.previousLinkingHover != token) {
-            editor._emit('linkHoverOut');
+            editor._emit("linkHoverOut");
         }
-        editor._emit('linkHover', {position: docPos, token: token});
+        editor._emit("linkHover", {position: docPos, token: token});
         exports.previousLinkingHover = token;
     } else if (exports.previousLinkingHover) {
-        editor._emit('linkHoverOut');
+        editor._emit("linkHoverOut");
         exports.previousLinkingHover = false;
     }
 }
@@ -50,6 +50,6 @@ function onClick(e) {
         var session = editor.session;
         var token = session.getTokenAt(docPos.row, docPos.column);
 
-        editor._emit('linkClick', {position: docPos, token: token});
+        editor._emit("linkClick", {position: docPos, token: token});
     }
 }
