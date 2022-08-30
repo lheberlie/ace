@@ -28,7 +28,6 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-define(function(require, exports, module) {
   'use strict';
 
   var dom = require('ace/lib/dom');
@@ -159,4 +158,3 @@ define(function(require, exports, module) {
   }.call(TokenTooltip.prototype));
 
   exports.TokenTooltip = TokenTooltip;
-});
