@@ -28,7 +28,6 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-define(function(require, exports, module) {
   var Editor = require('ace/editor').Editor;
   var TokenTooltip = require('ace/ext/token_tooltip_esri').TokenTooltip;
 
@@ -84,4 +83,3 @@ define(function(require, exports, module) {
       editor._emit('linkClick', {position: docPos, token: token});
     }
   }
-});
