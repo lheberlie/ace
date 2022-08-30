@@ -1,4 +1,4 @@
-/* CSS style content from ace's github theme. */
+module.exports = `/* CSS style content from ace's github theme. */
 
 .ace_editor {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace !default;
@@ -215,4 +215,4 @@
 
 .ace_github .ace_string {
   color: #032f62;
-}
+}`;
