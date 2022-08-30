@@ -1,10 +1,10 @@
 "use strict";
 
-var dom = require("ace/lib/dom");
-var oop = require("ace/lib/oop");
-var event = require("ace/lib/event");
-var Range = require("ace/range").Range;
-var Tooltip = require("ace/tooltip").Tooltip;
+var dom = require("../lib/dom");
+var oop = require("../lib/oop");
+var event = require("../lib/event");
+var Range = require("../range").Range;
+var Tooltip = require("../tooltip").Tooltip;
 
 function TokenTooltip(editor) {
     if (editor.tokenTooltip) return;
