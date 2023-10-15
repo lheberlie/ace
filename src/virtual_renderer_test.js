@@ -9,8 +9,8 @@ var Range = require("./range").Range;
 var Editor = require("./editor").Editor;
 var EditSession = require("./edit_session").EditSession;
 var VirtualRenderer = require("./virtual_renderer").VirtualRenderer;
+var vim = require("./keyboard/vim");
 var assert = require("./test/assertions");
-require("./ext/error_marker");
 
 function setScreenPosition(node, rect) {
     node.style.left = rect[0] + "px";
@@ -22,6 +22,14 @@ function setScreenPosition(node, rect) {
 var editor = null;
 module.exports = {
     setUp: function() {
+        require("./config").setLoader(function(moduleName, cb) {
+            if (moduleName == "ace/ext/error_marker")
+                return cb(null, require("./ext/error_marker"));
+            if (moduleName == "ace/mode/javascript")
+                return cb(null, require("./mode/javascript"));
+            throw new Error("module not configured " + moduleName);
+        });
+        
         if (editor)
             editor.destroy();
         var el = document.createElement("div");
@@ -192,6 +200,225 @@ module.exports = {
         editor.renderer.$loop._flush();
         editor._signal("input", {});
         assert.equal(editor.renderer.content.textContent, "only visible for empty value");
+    },
+    "test: highlight indent guide": function () {
+        editor.session.setValue(
+            "function Test() {\n" + "    function Inner() {\n" + "        \n" + "        \n" + "    }\n" + "}");
+        editor.setOption("highlightIndentGuides", false);
+        editor.session.selection.$setSelection(1, 22, 1, 22);
+        editor.resize(true);
+
+        function assertIndentGuides(activeIndentGuidesCount) {
+            var activeIndentGuides = editor.container.querySelectorAll(".ace_indent-guide-active");
+            assert.equal(activeIndentGuides.length, activeIndentGuidesCount);
+        }
+
+        assertIndentGuides( 0);
+
+        editor.setOption("highlightIndentGuides", true);
+        assertIndentGuides( 2);
+
+        editor.session.selection.clearSelection();
+        editor.session.selection.$setSelection(1, 15, 1, 15);
+        editor.resize(true);
+        assertIndentGuides( 0);
+    },
+    "test annotation marks": function() {
+        function findPointFillStyle(imageData, x, y) {
+            var data = imageData.slice(4 * y, 4 * (y + 1));
+            var a = Math.round(data[3] / 256 * 100);
+            if (a == 100) return "rgb(" + data.slice(0, 3).join(",") + ")";
+            return "rgba(" + data.slice(0, 3).join(",") + "," + (a / 100) + ")";
+        }
+
+        function assertCoordsColor(expected) {
+            var imageData = context.getImageData(0, 0, 1, 100).data;
+            for (var el of expected) {
+                assert.equal(findPointFillStyle(imageData, el.x, el.y), el.color);
+            }
+        }
+
+        var renderer = editor.renderer;
+        renderer.container.scrollHeight = 100;
+        renderer.layerConfig.maxHeight = 200;
+        renderer.layerConfig.lineHeight = 14;
+
+        editor.setOptions({
+            customScrollbar: true,
+            vScrollBarAlwaysVisible: true
+        });
+        editor.setValue("a" + "\n".repeat(100) + "b" + "\nxxxxxx", -1);
+        editor.session.setAnnotations([
+            {
+                row: 1,
+                column: 2,
+                type: "error"
+            }, {
+                row: 4,
+                column: 1,
+                type: "warning"
+            }, {
+                row: 20,
+                column: 1,
+                type: "info"
+            }
+        ]);
+        renderer.$loop._flush();
+        var context = renderer.$scrollDecorator.canvas.getContext("2d");
+        var scrollDecoratorColors = renderer.$scrollDecorator.colors.light;
+        var values = [
+            // reflects cursor position on canvas
+            {x: 0, y: 0, color: "rgba(0,0,0,0.5)"},
+            // reflects error annotation mark on canvas overlapped by cursor
+            {x: 0, y: 2, color: scrollDecoratorColors.error},
+            // default value
+            {x: 0, y: 3, color: "rgba(0,0,0,0)"},
+            // reflects warning annotation mark on canvas
+            {x: 0, y: 4, color: scrollDecoratorColors.warning},
+            {x: 0, y: 5, color: scrollDecoratorColors.warning},
+            {x: 0, y: 6, color: "rgba(0,0,0,0)"},
+            {x: 0, y: 20, color: scrollDecoratorColors.info},
+            {x: 0, y: 21, color: scrollDecoratorColors.info}
+        ];
+        assertCoordsColor(values);
+        editor.moveCursorTo(5, 6);
+        renderer.$loop._flush();
+        values = [
+            {x: 0, y: 0, color: "rgba(0,0,0,0)"},
+            {x: 0, y: 1, color: scrollDecoratorColors.error},
+            {x: 0, y: 2, color: scrollDecoratorColors.error},
+            {x: 0, y: 3, color: "rgba(0,0,0,0)"},
+            {x: 0, y: 4, color: scrollDecoratorColors.warning},
+            {x: 6, y: 6, color: "rgba(0,0,0,0.5)"}
+        ];
+        assertCoordsColor(values);
+        renderer.session.addFold("...", new Range(0, 0, 3, 2));
+        editor.moveCursorTo(10, 0);
+        renderer.$loop._flush();
+        values = [
+            {x: 0, y: 0, color: scrollDecoratorColors.error},
+            {x: 0, y: 1, color: scrollDecoratorColors.error},
+            {x: 0, y: 2, color: scrollDecoratorColors.warning},
+            {x: 0, y: 3, color: "rgba(0,0,0,0)"},
+            {x: 0, y: 4, color: "rgba(0,0,0,0)"},
+            {x: 0, y: 5, color: "rgba(0,0,0,0)"},
+            {x: 0, y: 6, color: "rgba(0,0,0,0)"}
+        ];
+        assertCoordsColor(values);
+    },
+    "test ghost text": function() {
+        editor.session.setValue("abcdef");
+        editor.setGhostText("Ghost");
+
+        editor.renderer.$loop._flush();
+        assert.equal(editor.renderer.content.textContent, "Ghostabcdef");
+
+        editor.setGhostText("Ghost", {row: 0, column: 3});
+
+        editor.renderer.$loop._flush();
+        assert.equal(editor.renderer.content.textContent, "abcGhostdef");
+
+        editor.setGhostText("Ghost", {row: 0, column: 6});
+
+        editor.renderer.$loop._flush();
+        assert.equal(editor.renderer.content.textContent, "abcdefGhost");
+
+        editor.removeGhostText();
+
+        editor.renderer.$loop._flush();
+        assert.equal(editor.renderer.content.textContent, "abcdef");
+    },
+
+    "test multiline ghost text": function() {
+        editor.session.setValue("abcdef");
+        editor.renderer.$loop._flush();
+
+        editor.setGhostText("Ghost1\nGhost2\nGhost3", {row: 0, column: 6});
+
+        editor.renderer.$loop._flush();
+        assert.equal(editor.renderer.content.textContent, "abcdefGhost1");
+        
+        assert.equal(editor.session.lineWidgets[0].el.textContent, "Ghost2\nGhost3");
+
+        editor.removeGhostText();
+
+        editor.renderer.$loop._flush();
+        assert.equal(editor.renderer.content.textContent, "abcdef");
+        
+        assert.equal(editor.session.lineWidgets, null);
+    },
+    "test: brackets highlighting": function (done) {
+        var renderer = editor.renderer;
+        editor.session.setValue(
+            "function Test() {\n" + "    function Inner(){\n" + "        \n" + "        \n" + "    }\n" + "}");
+        editor.session.selection.$setSelection(1, 21, 1, 21);
+        renderer.$loop._flush();
+
+        setTimeout(function () {
+            assert.ok(editor.session.$bracketHighlight);
+            assert.range(editor.session.$bracketHighlight.ranges[0], 1, 20, 1, 21);
+            assert.range(editor.session.$bracketHighlight.ranges[1], 4, 4, 4, 5);
+
+            editor.session.selection.$setSelection(1, 16, 1, 16);
+            setTimeout(function () {
+                assert.ok(editor.session.$bracketHighlight == null);
+                editor.setKeyboardHandler(vim.handler);
+                editor.session.selection.$setSelection(1, 20, 1, 20);
+                setTimeout(function () {
+                    assert.ok(editor.session.$bracketHighlight);
+                    assert.range(editor.session.$bracketHighlight.ranges[0], 1, 20, 1, 21);
+                    assert.range(editor.session.$bracketHighlight.ranges[1], 4, 4, 4, 5);
+                    done();
+                }, 60);
+            }, 60);
+        }, 60);
+    },
+    "test: scroll cursor into view": function() {
+        function X(n) {
+            return "X".repeat(n);
+        }
+        editor.session.setValue(`${X(10)}\n${X(1000)}}`);
+
+        var initialContentLeft = editor.renderer.content.getBoundingClientRect().left;
+
+        // Scroll so far to the right that the first line is completely hidden
+        editor.session.selection.$setSelection(1, 1000, 1, 1000);
+        editor.renderer.scrollCursorIntoView();
+        editor.renderer.$loop._flush();
+
+        editor.session.selection.$setSelection(0, 10, 0, 10);
+        editor.renderer.scrollCursorIntoView();
+        editor.renderer.$loop._flush();
+
+        var contentLeft = editor.renderer.content.getBoundingClientRect().left;
+        var scrollDelta = initialContentLeft - contentLeft;
+
+        const leftBoundPixelPos = editor.renderer.$cursorLayer.getPixelPosition({row: 0, column: 8}).left;
+        const rightBoundPixelPos = editor.renderer.$cursorLayer.getPixelPosition({row: 0, column: 9}).left;
+        assert.ok(
+            scrollDelta >= leftBoundPixelPos && scrollDelta < rightBoundPixelPos,
+            "Expected content to have been scrolled two characters beyond the cursor"
+        );
+    },
+    "test: set gutter class": function(done) {
+        editor.session.setMode("ace/mode/javascript", function() {
+            editor.session.setValue("x = {\n  foo: 1\n}");
+            editor.execCommand("toggleFoldWidget");
+            editor.renderer.$loop._flush();
+            assert.equal(editor.renderer.$loop.changes, 0);
+            var cell = editor.renderer.$gutterLayer.$lines.cells[0];
+            assert.equal(cell.element.childNodes[1].className, "ace_fold-widget ace_start ace_closed");
+            assert.equal(cell.element.className.trim(), "ace_gutter-cell ace_gutter-active-line");
+
+            editor.session.setBreakpoint(0, "hello");
+            assert.notEqual(editor.renderer.$loop.changes, 0);
+            editor.renderer.$loop._flush();
+
+            cell = editor.renderer.$gutterLayer.$lines.cells[0];
+            assert.equal(editor.renderer.$loop.changes, 0);
+            assert.equal(cell.element.className, "ace_gutter-cell ace_gutter-active-line hello");
+            done();
+        });
     }
 
     // change tab size after setDocument (for text layer)

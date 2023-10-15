@@ -108,6 +108,9 @@ var Keys = (function() {
         }
     };
 
+    // workaround for firefox bug
+    ret.PRINTABLE_KEYS[173] = '-';
+
     // A reverse map of FUNCTION_KEYS
     var name, i;
     for (i in ret.FUNCTION_KEYS) {
@@ -131,13 +134,10 @@ var Keys = (function() {
     ret.enter = ret["return"];
     ret.escape = ret.esc;
     ret.del = ret["delete"];
-
-    // workaround for firefox bug
-    ret[173] = '-';
     
     (function() {
         var mods = ["cmd", "ctrl", "alt", "shift"];
-        for (var i = Math.pow(2, mods.length); i--;) {            
+        for (var i = Math.pow(2, mods.length); i--;) {
             ret.KEY_MODS[i] = mods.filter(function(x) {
                 return i & ret.KEY_MODS[x];
             }).join("-") + "-";
@@ -150,6 +150,8 @@ var Keys = (function() {
     return ret;
 })();
 oop.mixin(exports, Keys);
+
+exports.default = exports;
 
 exports.keyCodeToString = function(keyCode) {
     // Language-switching keystroke in Chrome/Linux emits keyCode 0.

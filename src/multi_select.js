@@ -224,8 +224,8 @@ var EditSession = require("./edit_session").EditSession;
      * 
      * Gets list of ranges composing rectangular block on the screen
      * 
-     * @param {Cursor} screenCursor The cursor to use
-     * @param {Anchor} screenAnchor The anchor to use
+     * @param {Position} screenCursor The cursor to use
+     * @param {Position} screenAnchor The anchor to use
      * @param {Boolean} includeEmptyLines If true, this includes ranges inside the block which are empty due to clipping
      * @returns {Range}
      * @method Selection.rectangularRangeBlock
@@ -917,10 +917,8 @@ require("./config").defineOptions(Editor.prototype, "editor", {
         set: function(val) {
             MultiSelect(this);
             if (val) {
-                this.on("changeSession", this.$multiselectOnSessionChange);
                 this.on("mousedown", onMouseDown);
             } else {
-                this.off("changeSession", this.$multiselectOnSessionChange);
                 this.off("mousedown", onMouseDown);
             }
         },

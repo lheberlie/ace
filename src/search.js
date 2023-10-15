@@ -5,72 +5,70 @@ var oop = require("./lib/oop");
 var Range = require("./range").Range;
 
 /**
- * @class Search
- *
  * A class designed to handle all sorts of text searches within a [[Document `Document`]].
- *
  **/
-
-/**
- * 
- *
- * Creates a new `Search` object. The following search options are available:
- *
- * - `needle`: The string or regular expression you're looking for
- * - `backwards`: Whether to search backwards from where cursor currently is. Defaults to `false`.
- * - `wrap`: Whether to wrap the search back to the beginning when it hits the end. Defaults to `false`.
- * - `caseSensitive`: Whether the search ought to be case-sensitive. Defaults to `false`.
- * - `wholeWord`: Whether the search matches only on whole words. Defaults to `false`.
- * - `range`: The [[Range]] to search within. Set this to `null` for the whole document
- * - `regExp`: Whether the search is a regular expression or not. Defaults to `false`.
- * - `start`: The starting [[Range]] or cursor position to begin the search
- * - `skipCurrent`: Whether or not to include the current line in the search. Default to `false`.
- * 
- * @constructor
- **/
-
-var Search = function() {
-    this.$options = {};
-};
-
-(function() {
+class Search {
     /**
-     * Sets the search options via the `options` parameter.
-     * @param {Object} options An object containing all the new search properties
-     *
+     * Creates a new `Search` object. The following search options are available:
+     * @typedef SearchOptions
      * 
-     * @returns {Search}
-     * @chainable
-    **/
-    this.set = function(options) {
-        oop.mixin(this.$options, options);
-        return this;
-    };
-
-    /**
-     * [Returns an object containing all the search options.]{: #Search.getOptions}
-     * @returns {Object}
-    **/
-    this.getOptions = function() {
-        return lang.copyObject(this.$options);
-    };
+     * @property {string|RegExp} [needle] - The string or regular expression you're looking for
+     * @property {boolean} [backwards] - Whether to search backwards from where cursor currently is
+     * @property {boolean} [wrap] - Whether to wrap the search back to the beginning when it hits the end
+     * @property {boolean} [caseSensitive] - Whether the search ought to be case-sensitive
+     * @property {boolean} [wholeWord] - Whether the search matches only on whole words
+     * @property {Range|null} [range] - The [[Range]] to search within. Set this to `null` for the whole document
+     * @property {boolean} [regExp] - Whether the search is a regular expression or not
+     * @property {Range|Position} [start] - The starting [[Range]] or cursor position to begin the search
+     * @property {boolean} [skipCurrent] - Whether or not to include the current line in the search
+     * @property {boolean} [$isMultiLine] - true, if needle has \n or \r\n
+     * @property {boolean} [preserveCase]
+     * @property {boolean} [preventScroll]
+     * @property {boolean} [$supportsUnicodeFlag] - internal property, determine if browser supports unicode flag
+     * @property {any} [re]
+     **/
+    
+    constructor() {
+        /** 
+         * @type {SearchOptions}
+         */
+        this.$options = {};
+    }
     
     /**
      * Sets the search options via the `options` parameter.
-     * @param {Object} An object containing all the search propertie
+     * @param {SearchOptions} options An object containing all the new search properties
+     * @returns {Search}
+     * @chainable
+    **/
+    set(options) {
+        oop.mixin(this.$options, options);
+        return this;
+    }
+
+    /**
+     * [Returns an object containing all the search options.]{: #Search.getOptions}
+     * @returns {SearchOptions}
+    **/
+    getOptions() {
+        return lang.copyObject(this.$options);
+    }
+    
+    /**
+     * Sets the search options via the `options` parameter.
+     * @param {SearchOptions} options object containing all the search propertie
      * @related Search.set
     **/
-    this.setOptions = function(options) {
+    setOptions(options) {
         this.$options = options;
-    };
+    }
+
     /**
      * Searches for `options.needle`. If found, this method returns the [[Range `Range`]] where the text first occurs. If `options.backwards` is `true`, the search goes backwards in the session.
      * @param {EditSession} session The session to search with
-     *
-     * 
-     * @returns {Range}
-    **/
-    this.find = function(session) {
+     * @returns {Range|boolean}
+     **/
+    find(session) {
         var options = this.$options;
         var iterator = this.$matchIterator(session, options);
         if (!iterator)
@@ -90,16 +88,14 @@ var Search = function() {
         });
 
         return firstRange;
-    };
+    }
 
     /**
      * Searches for all occurrances `options.needle`. If found, this method returns an array of [[Range `Range`s]] where the text first occurs. If `options.backwards` is `true`, the search goes backwards in the session.
      * @param {EditSession} session The session to search with
-     *
-     * 
-     * @returns {[Range]}
+     * @returns {Range[]}
     **/
-    this.findAll = function(session) {
+    findAll(session) {
         var options = this.$options;
         if (!options.needle)
             return [];
@@ -149,12 +145,13 @@ var Search = function() {
 
         if (range) {
             var startColumn = range.start.column;
-            var endColumn = range.start.column;
+            var endColumn = range.end.column;
             var i = 0, j = ranges.length - 1;
-            while (i < j && ranges[i].start.column < startColumn && ranges[i].start.row == range.start.row)
+            while (i < j && ranges[i].start.column < startColumn && ranges[i].start.row == 0)
                 i++;
 
-            while (i < j && ranges[j].end.column > endColumn && ranges[j].end.row == range.end.row)
+            var endRow = range.end.row - range.start.row;
+            while (i < j && ranges[j].end.column > endColumn && ranges[j].end.row == endRow)
                 j--;
             
             ranges = ranges.slice(i, j + 1);
@@ -165,7 +162,7 @@ var Search = function() {
         }
 
         return ranges;
-    };
+    }
 
     /**
      * Searches for `options.needle` in `input`, and, if found, replaces it with `replacement`.
@@ -177,7 +174,7 @@ var Search = function() {
      * 
      * @returns {String}
     **/
-    this.replace = function(input, replacement) {
+    replace(input, replacement) {
         var options = this.$options;
 
         var re = this.$assembleRegExp(options);
@@ -205,17 +202,33 @@ var Search = function() {
         }
         
         return replacement;
-    };
+    }
 
-    this.$assembleRegExp = function(options, $disableFakeMultiline) {
+    /**
+     * 
+     * @param {SearchOptions} options
+     * @param $disableFakeMultiline
+     * @return {RegExp|boolean|*[]|*}
+     */
+    $assembleRegExp(options, $disableFakeMultiline) {
         if (options.needle instanceof RegExp)
             return options.re = options.needle;
-
+        
         var needle = options.needle;
 
         if (!options.needle)
             return options.re = false;
+        
+        if (options.$supportsUnicodeFlag === undefined) {
+            options.$supportsUnicodeFlag = lang.supportsUnicodeFlag();
+        }
 
+        try {
+            new RegExp(needle, "u");
+        } catch (e) {
+            options.$supportsUnicodeFlag = false; //left for backward compatibility with previous versions for cases like /ab\{2}/gu
+        }
+        
         if (!options.regExp)
             needle = lang.escapeRegExp(needle);
 
@@ -224,6 +237,10 @@ var Search = function() {
 
         var modifier = options.caseSensitive ? "gm" : "gmi";
 
+        if (options.$supportsUnicodeFlag) {
+            modifier += "u";
+        }
+        
         options.$isMultiLine = !$disableFakeMultiline && /[\n\r]/.test(needle);
         if (options.$isMultiLine)
             return options.re = this.$assembleMultilineRegExp(needle, modifier);
@@ -234,9 +251,9 @@ var Search = function() {
             re = false;
         }
         return options.re = re;
-    };
+    }
 
-    this.$assembleMultilineRegExp = function(needle, modifier) {
+    $assembleMultilineRegExp(needle, modifier) {
         var parts = needle.replace(/\r\n|\r|\n/g, "$\n^").split("\n");
         var re = [];
         for (var i = 0; i < parts.length; i++) try {
@@ -245,9 +262,9 @@ var Search = function() {
             return false;
         }
         return re;
-    };
+    }
 
-    this.$matchIterator = function(session, options) {
+    $matchIterator(session, options) {
         var re = this.$assembleRegExp(options);
         if (!re)
             return false;
@@ -359,17 +376,37 @@ var Search = function() {
             };
         }
         return {forEach: forEach};
-    };
+    }
 
-}).call(Search.prototype);
+}
 
+/**
+ * 
+ * @param {string} needle
+ * @param {SearchOptions} options
+ * @return {string}
+ */
 function addWordBoundary(needle, options) {
-    function wordBoundary(c) {
-        if (/\w/.test(c) || options.regExp) return "\\b";
+    let supportsLookbehind = lang.supportsLookbehind();
+
+    function wordBoundary(c, firstChar = true) {
+        let wordRegExp = supportsLookbehind && options.$supportsUnicodeFlag ? new RegExp("[\\p{L}\\p{N}_]","u") : new RegExp("\\w");
+
+        if (wordRegExp.test(c) || options.regExp) {
+            if (supportsLookbehind && options.$supportsUnicodeFlag) {
+                if (firstChar) return "(?<=^|[^\\p{L}\\p{N}_])";
+                return "(?=[^\\p{L}\\p{N}_]|$)";
+            }
+            return "\\b";
+        }
         return "";
     }
-    return wordBoundary(needle[0]) + needle
-        + wordBoundary(needle[needle.length - 1]);
+
+    let needleArray = Array.from(needle);
+    let firstChar = needleArray[0];
+    let lastChar = needleArray[needleArray.length - 1];
+
+    return wordBoundary(firstChar) + needle + wordBoundary(lastChar, false);
 }
 
 exports.Search = Search;

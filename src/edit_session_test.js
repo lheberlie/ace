@@ -498,6 +498,21 @@ module.exports = {
         assert.equal(session.$foldData.length, 0);
     },
 
+    "test setting undefined value": function() {
+        var session = createFoldTestSession();
+        var editor = new Editor(new MockRenderer(), session);
+        editor.setOption("mode", new JavaScriptMode());
+
+        editor.setValue("test");
+        assert.equal(session.getValue(), "test");
+
+        editor.setValue(undefined);
+        assert.equal(session.getValue(), "");
+
+        editor.setValue("test");
+        assert.equal(session.getValue(), "test");
+    },
+
     "test foldOther": function() {
         var session = new EditSession("{\n\t1{\n\t\t\n\t\t1.1 {\n\t\t}\n\t}\n\t2 {\n\t\t2.1 {\n\t\t\t2.2 {\n\t\t\t}\n\t\t\t2.3 {\n\t\t\t}\n\t\t}\n\t}\n}\n\n{\n}");
         var editor = new Editor(new MockRenderer(), session);
@@ -1122,6 +1137,19 @@ module.exports = {
         session.destroy();
         assert.equal(session.destroyed, true);
         assert.notEqual(session.bgTokenizer, null);
+    },
+
+    "test: JSON serialization": function() {
+        var session = new EditSession(["Hello world!"]);
+        session.setAnnotations([{row: 0, column: 0, text: "error test", type: "error"}]);
+        session.setMode("ace/mode/javascript");
+        session = EditSession.fromJSON(JSON.stringify(session));
+        
+        assert.equal(session.getAnnotations().length, 1);
+        assert.equal(session.getMode().$id, "ace/mode/javascript");
+        assert.equal(session.getScrollLeft(), 0);
+        assert.equal(session.getScrollTop(), 0);
+        assert.equal(session.getValue(), "Hello world!");
     }
 };
 

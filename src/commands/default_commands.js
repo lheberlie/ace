@@ -28,7 +28,7 @@ exports.commands = [{
     description: "Go to next error",
     bindKey: bindKey("Alt-E", "F4"),
     exec: function(editor) {
-        config.loadModule("./ext/error_marker", function(module) {
+        config.loadModule("ace/ext/error_marker", function(module) {
             module.showErrorMarker(editor, 1);
         });
     },
@@ -39,7 +39,7 @@ exports.commands = [{
     description: "Go to previous error",
     bindKey: bindKey("Alt-Shift-E", "Shift-F4"),
     exec: function(editor) {
-        config.loadModule("./ext/error_marker", function(module) {
+        config.loadModule("ace/ext/error_marker", function(module) {
             module.showErrorMarker(editor, -1);
         });
     },
@@ -745,6 +745,10 @@ exports.commands = [{
     scrollIntoView: "cursor",
     readOnly: true
 }, {
+    name: "openlink",
+    bindKey: bindKey("Ctrl+F3", "F3"),
+    exec: function(editor) { editor.openLink(); }
+}, {
     name: "joinlines",
     description: "Join lines",
     bindKey: bindKey(null, null),
@@ -851,7 +855,7 @@ exports.commands = [{
     scrollIntoView: "cursor"
 }, {
     name: "openCommandPallete",
-    description: "Open command pallete",
+    description: "Open command palette",
     bindKey: bindKey("F1", "F1"),
     exec: function(editor) {
         editor.prompt({ $type: "commands" });

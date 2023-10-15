@@ -2,6 +2,7 @@
 
 var oop = require("./oop");
 var EventEmitter = require("./event_emitter").EventEmitter;
+const reportError = require("./report_error").reportError;
 
 var optionsProvider = {
     setOptions: function(optList) {
@@ -56,25 +57,19 @@ function warn(message) {
         console.warn.apply(console, arguments);
 }
 
-function reportError(msg, data) {
-    var e = new Error(msg);
-    e.data = data;
-    if (typeof console == "object" && console.error)
-        console.error(e);
-    setTimeout(function() { throw e; });
-}
 
-var AppConfig = function() {
-    this.$defaultOptions = {};
-};
 
-(function() {
-    // module loading
-    oop.implement(this, EventEmitter);
+var messages;
+
+class AppConfig {
+    constructor() {
+        this.$defaultOptions = {};
+    }
+    
     /*
      * option {name, value, initialValue, setterName, set, get }
      */
-    this.defineOptions = function(obj, path, options) {
+    defineOptions(obj, path, options) {
         if (!obj.$options)
             this.$defaultOptions[path] = obj.$options = {};
 
@@ -93,17 +88,17 @@ var AppConfig = function() {
         oop.implement(obj, optionsProvider);
 
         return this;
-    };
+    }
 
-    this.resetOptions = function(obj) {
+    resetOptions(obj) {
         Object.keys(obj.$options).forEach(function(key) {
             var opt = obj.$options[key];
             if ("value" in opt)
                 obj.setOption(key, opt.value);
         });
-    };
+    }
 
-    this.setDefaultValue = function(path, name, value) {
+    setDefaultValue(path, name, value) {
         if (!path) {
             for (path in this.$defaultOptions)
                 if (this.$defaultOptions[path][name])
@@ -118,17 +113,36 @@ var AppConfig = function() {
             else
                 opts[name].value = value;
         }
-    };
+    }
 
-    this.setDefaultValues = function(path, optionHash) {
+    setDefaultValues(path, optionHash) {
         Object.keys(optionHash).forEach(function(key) {
             this.setDefaultValue(path, key, optionHash[key]);
         }, this);
-    };
+    }
     
-    this.warn = warn;
-    this.reportError = reportError;
+    setMessages(value) {
+        messages = value;
+    }
     
-}).call(AppConfig.prototype);
+    nls(string, params) {
+        if (messages && !messages[string])  {
+            warn("No message found for '" + string + "' in the provided messages, falling back to default English message.");
+        }
+        var translated = messages && messages[string] || string;
+        if (params) {
+            translated = translated.replace(/\$(\$|[\d]+)/g, function(_, name) {
+                if (name == "$") return "$";
+                return params[name];
+            });
+        }
+        return translated;
+    }
+}
+AppConfig.prototype.warn = warn;
+AppConfig.prototype.reportError = reportError;
+
+// module loading
+oop.implement(AppConfig.prototype, EventEmitter);
 
 exports.AppConfig = AppConfig;

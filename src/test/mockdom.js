@@ -1,4 +1,5 @@
 "use strict";
+/*global Uint8ClampedArray*/
 
 var dom = require("../lib/dom");
 
@@ -41,10 +42,10 @@ function ClassList(node) {
        dom.removeCssClass(this.el, str);
     };
     this.toggle = function(str) {
-       dom.toggleCssClass(this.el, str);
+       return dom.toggleCssClass(this.el, str);
     };
     this.contains = function(str) {
-       dom.hasCssClass(this.el, str);
+       return dom.hasCssClass(this.el, str);
     };
 }).call(ClassList.prototype);
 
@@ -89,8 +90,73 @@ var initializers = {
            insertRule: function() {},
            cssRules: []
        };
+    },
+    a: function() {
+        this.__defineGetter__("href", function() {
+            return this.getAttribute("href");
+        });
+        this.__defineSetter__("href", function(v) {
+            return this.setAttribute("href", v);
+        });
+    },
+    canvas: function() {
+        this.getContext = function (contextId, options) {
+            if (this._contextMock !== undefined) return this._contextMock;
+            return this._contextMock = new Context2d(this.width, this.height);
+        };
     }
 };
+
+function Context2d(w, h) {
+    this.width = w;
+    this.height = h;
+    this.points = new Uint8ClampedArray(4 * this.width * this.height);
+    this.fillStyle = [0, 0, 0, 0];
+}
+(function() {
+    this.clearRect = function(x, y, w, h) {
+        var fillStyle = this.fillStyle;
+        this.fillStyle = [0, 0, 0, 0];
+        this.fillRect(x, y, w, h);
+        this.fillStyle = fillStyle;
+    };
+    this.fillRect = function(x, y, w, h) {
+        var fillStyle = this.fillStyle;
+        if (typeof fillStyle == "string")
+            fillStyle = this.fillStyle = this.$parseColor(this.fillStyle);
+        for (var i = x; i < w + x; i++) {
+            for (var j = y; j < h + y; j++) {
+                var index = (this.width * j + i) * 4;
+                for (var k = 0; k < 4; k++)
+                    this.points[index++] = fillStyle[k];
+            }
+        }
+    };
+    this.getImageData = function(sx, sy, sw, sh) {
+        var data = new Uint8ClampedArray(sw * sh * 4);
+        var newIndex = 0;
+        for (var i = sx; i < sw + sy; i++) {
+            for (var j = sy; j < sh + sy; j++) {
+                var index = (this.width * j + i) * 4;
+                for (var k = 0; k < 4; k++)
+                    data[newIndex++] = this.points[index++];
+            }
+        }
+        return {
+            data: data
+        };
+    };
+    this.$parseColor = function(str) {
+        var color = str.match(/\(([^,)]+),([^,)]+),([^,)]+)(?:,([^,)]+))?/).slice(1);
+        color[3] = Math.round((color[3] ? parseFloat(color[3]) : 1) * 255);
+        for (var i = 0; i < 3; i++) {
+            color[i] = parseInt(color[i]);
+        }
+        return color;
+    };
+}).call(Context2d.prototype);
+
+
 
 function getItem(i) { return this[i]; }
 
@@ -115,7 +181,7 @@ function Node(name) {
             clone.setAttribute(i, this.$attributes[i]);
         }
         if (recursive) {
-            this.children.forEach(function(ch) {
+            this.childNodes.forEach(function(ch) {
                 clone.appendChild(ch.cloneNode(true));
             }, this);
         }
@@ -125,11 +191,11 @@ function Node(name) {
         return this.insertBefore(node, null);
     };
     this.removeChild = function(node) {
-        var i = this.children.indexOf(node);
+        var i = this.childNodes.indexOf(node);
         if (i == -1)
             throw new Error("not a child");
         node.parentNode = node.nextSibling = node.previousSibling = null;
-        this.children.splice(i, 1);
+        this.childNodes.splice(i, 1);
         if (!document.contains(document.activeElement))
             document.activeElement = document.body;
     };
@@ -144,17 +210,17 @@ function Node(name) {
     this.insertBefore = function(node, before) {
         if (node.parentNode)
             node.parentNode.removeChild(node);
-        var i = this.children.indexOf(before);
-        if (i == -1) i = this.children.length + 1;
+        var i = this.childNodes.indexOf(before);
+        if (i == -1) i = this.childNodes.length + 1;
         if (node.localName == "#fragment") {
-            var children = node.children.slice();
+            var children = node.childNodes.slice();
             for (var j = 0; j < children.length; j++)
                 this.insertBefore(children[j], before);
         }
         else {
-            this.children.splice(i, 0, node);
-            node.nextSibling = this.children[i];
-            node.previousSibling = this.children[i - 2];
+            this.childNodes.splice(i, 0, node);
+            node.nextSibling = this.childNodes[i];
+            node.previousSibling = this.childNodes[i - 2];
             if (node.nextSibling)
                 node.nextSibling.previousSibling = node;
             if (node.previousSibling)
@@ -171,33 +237,32 @@ function Node(name) {
         return this.childNodes.length > 0;
     };
     this.__defineGetter__("childElementCount", function() {
-        return this.childNodes.length;
+        return this.children.length;
     });
+    this.hasAttribute = function(x) {
+        return this.$attributes.hasOwnProperty(x);
+    };
     this.hasAttributes = function() {
         return Object.keys(this.$attributes).length > 0;
     };
     this.querySelectorAll = function(selector) {
+        return querySelector(this, selector, true);
+    };
+    this.querySelector = function(selector) {
+        return querySelector(this, selector, false)[0];
+    };
+    function querySelector(node, selector, all) {
         var parts = parseSelector(selector);
         
         var nodes = [];
-        function search(root, parts) {
-            var operator = parts[0];
-            var tests = parts[1];
-            var iterator = operator == ">" ? walkShallow : walk;
-            iterator(root, function(node) {
-                var isAMatch = tests.every(function(t) {return t(node);});
-                if (isAMatch) {
-                    if (parts.length > 3) search(node, parts.slice(2));
-                    else nodes.push(node);
-                }
-            });
-        }
-        search(this, parts);
+        walk(node, function(node) {
+            if (node.matches && node.matches(parts)) {
+                nodes.push(node);
+                if (!all) return true;
+            }
+        });
         return nodes;
-    };
-    this.querySelector = function(s) {
-        return this.querySelectorAll(s)[0];
-    };
+    }
     this.getElementsByTagName = function(s) {
         var nodes = [];
         walk(this, function(node) {
@@ -206,35 +271,31 @@ function Node(name) {
         });
         return nodes;
     };
-    this.getElementById = function(s) {
-        return walk(this, function(node) {
-            // console.log(node.getAttribute && node.getAttribute("id"))
-            if (node.getAttribute && node.getAttribute("id") == s)
-                return node;
-        });
-    };
     this.matches = function(selector) {
         var parts = parseSelector(selector);
         var node = this;
-        var operator, tests, skip;
-        while (parts.length && node) {
-            if (!skip) {
-                tests = parts.pop();
-                operator = parts.pop();
-                skip = operator != ">";
-            }
+        var operator = parts.pop();
+        var tests = parts.pop();
+        while (node && node.nodeType != 9) {
             if (!tests) return true;
             var isAMatch = tests.every(function(t) {return t(node);});
-            if (!isAMatch && !skip) return false;
+            if (!isAMatch) {
+                if (!operator || operator === ">")
+                    return false;
+            } else {
+                operator = parts.pop();
+                tests = parts.pop();
+            }
             node = node.parentNode;
         }
+        return !tests;
     };
     this.closest = function(s) {
         var el = this;
         do {
             if (el.matches(s)) return el;
             el = el.parentElement || el.parentNode;
-        } while (el !== null && el.nodeType === 1);
+        } while (el != null && el.nodeType === 1);
         return null;
     };
     this.removeAttribute = function(a) {
@@ -301,13 +362,13 @@ function Node(name) {
         return this.parentNode == document ? null : this.parentNode;
     });
     this.__defineGetter__("innerHTML", function() {
-        return this.children.map(function(ch) {
+        return this.childNodes.map(function(ch) {
             return "outerHTML" in ch ? ch.outerHTML : escapeHTML(ch.data);
         }).join("");
     });
     this.__defineGetter__("outerHTML", function() {
         var attributes = this.attributes.map(function(attr) {
-            return attr.name + "=" + JSON.stringify(attr.value);
+            return attr.name + "=" + JSON.stringify(attr.value + "");
         }, this).join(" ");
         return "<" + this.localName + (attributes ? " " + attributes : "") + ">" + this.innerHTML + "</" + this.localName + ">";
     });
@@ -317,7 +378,7 @@ function Node(name) {
             return attr.name + "=" + JSON.stringify(attr.value);
         }, this).join(" ");
         return indent + "<" + this.localName + (attributes ? " " + attributes : "") + ">" + 
-            this.children.map(function(ch) {
+            this.childNodes.map(function(ch) {
                 return "__format" in ch ? "\n" + ch.__format(indent + "    ") : escapeHTML(ch.data);
             }).join("")
             + "\n" + indent + "</" + this.localName + ">";
@@ -372,11 +433,15 @@ function Node(name) {
 
             if (this.style.width)
                 width = parseCssLength(this.style.width || "100%", rect.width);
+            else if (this.style.widthHint)
+                width = this.style.widthHint;
             else
                 width = rect.width - right - left;
             
-            if (this.style.width)
+            if (this.style.height)
                 height = parseCssLength(this.style.height || "100%", rect.height);
+            else if (this.style.heightHint)
+                height = this.style.heightHint;
             else
                 height = rect.height - top - bottom;
             
@@ -443,7 +508,7 @@ function Node(name) {
         if (!e.timeStamp) e.timeStamp = Date.now();
         e.currentTarget = this;
         var events = this._events && this._events[e.type];
-        events && events.forEach(function(listener) {
+        events && events.slice().forEach(function(listener) {
             listener.call(this, e);
         }, this);
         if (this["on" + e.type])
@@ -472,18 +537,18 @@ function Node(name) {
         if (document.activeElement == this)
             document.body.focus();
     };
-    
     function removeAllChildren(node) {
-        node.children.forEach(function(node) {
+        node.childNodes.forEach(function(node) {
             node.parentNode = null;
         });
-        node.children.length = 0;
+        node.childNodes.length = 0;
         if (!document.contains(document.activeElement))
             document.activeElement = document.body;
     }
 }).call(Node.prototype);
 
 function parseSelector(selector) {
+    if (Array.isArray(selector)) return selector.slice();
     var parts = selector.split(/((?:[^\s>"[]|"[^"]+"?|\[[^\]]*\]?)+)/);
     for (var i = 1; i < parts.length; i += 2) {
         parts[i] = parseSimpleSelector(parts[i]);
@@ -494,7 +559,7 @@ function parseSelector(selector) {
 function parseSimpleSelector(selector) {
     var tests = [];
     selector.replace(
-        /([#.])?([\w-]+)|\[\s*([\w-]+)\s*(?:=\s*"?([\w-]+)"?\s*)?\]|\*|./g,
+        /([#.])?([\w-]+)|\[\s*([\w-]+)\s*(?:=\s*["']?([\w-]+)["']?\s*)?\]|\*|./g,
         function(_, hash, name, attr, attrValue) {
             if (hash == "#") {
                 tests.push(function(node) { return node.id == name; });
@@ -507,8 +572,10 @@ function parseSimpleSelector(selector) {
                 tests.push(function(node) { return node.localName == name; });
             }
             else if (attr) {
-                tests.push(function(node) {
-                    return node.getAttribute(attr) == attrValue;
+                tests.push(attrValue != undefined ? function(node) {
+                    return node.getAttribute && node.getAttribute(attr) == attrValue;
+                } : function(node) {
+                    return node.hasAttribute && node.hasAttribute(attr);
                 });
             }
             else if (_ == "*") {
@@ -567,7 +634,7 @@ function setInnerHTML(markup, parent, strict) {
                 } else {
                     root = root.appendChild(document.createElement(tagName));
                 }
-                attributes && attributes.replace(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^"]*)'|(\w+))/g, function(_, key, v1,v2,v3) {
+                attributes && attributes.replace(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|(\w+))/g, function(_, key, v1,v2,v3) {
                     root.setAttribute(key, v1 || v2 || v3 || key);
                 });
             } 
@@ -654,17 +721,9 @@ function Event(type, options) {
 }).call(Event.prototype);
 
 function walk(node, fn) {
-    var children = node.children || [];
+    var children = node.childNodes || [];
     for (var i = 0; i < children.length; i++) {
         var result = fn(children[i]) || walk(children[i], fn);
-        if (result)
-            return result;
-    }
-}
-function walkShallow(node, fn) {
-    var children = node.children || [];
-    for (var i = 0; i < children.length; i++) {
-        var result = fn(children[i]);
         if (result)
             return result;
     }
@@ -698,6 +757,7 @@ window.HTMLDocument = window.XMLDocument = window.Document = function() {
     var document = this;
     if (!window.document) window.document = document;
     Node.call(this, "#document");
+    this.nodeType = 9;
     document.navigator = window.navigator;
     document.styleSheets = [];
     document.createElementNS = function(ns, t) {
@@ -725,7 +785,15 @@ window.HTMLDocument = window.XMLDocument = window.Document = function() {
     document.documentElement.appendChild(document.body);
     return document;
 };
-window.Document.prototype = Node.prototype;
+window.Document.prototype = Object.create(Node.prototype);
+(function() {
+    this.getElementById = function(s) {
+        return walk(this, function(node) {
+            if (node.getAttribute && node.getAttribute("id") == s)
+                return node;
+        });
+    };
+}.call(window.Document.prototype));
 
 window.DOMParser = function() {
     this.parseFromString = function(str, mode) {
@@ -778,20 +846,33 @@ if (typeof Buffer != "undefined") {
     };
 }
 
-var addedProperties = [];
+var originalProperties = {};
+var overriddenValues = {};
+var loaded = false;
+var overridableProperties = ["setTimeout", "clearTimeout", "getComputedStyle"];
 exports.load = function() {
-    if (typeof global == "undefined") return;
+    if (loaded || typeof global == "undefined") return;
     window.window = global;
     Object.keys(window).forEach(function(i) {
-        if (!global[i]) {
-            addedProperties.push(i);
-            global.__defineGetter__(i, function() {
-                return window[i];
-            });
-            global.__defineSetter__(i, function() {
-            });
-        }
+        var desc = Object.getOwnPropertyDescriptor(global, i);
+        originalProperties[i] = desc;
+        global.__defineGetter__(i, function() {
+            return overriddenValues[i] || window[i];
+        });
+        global.__defineSetter__(i, function(value) {
+            if (!overridableProperties.includes(i)) {
+                console.log("attempt to set " + i);
+            } else if (value === window[i]) {
+                delete overriddenValues[i];
+                if (!loaded) {
+                    unloadProperty(i);
+                }
+            } else {
+                overriddenValues[i] = value;
+            }
+        });
     });
+    loaded = true;
 };
 
 exports.loadInBrowser = function(global) {
@@ -839,16 +920,28 @@ exports.loadInBrowser = function(global) {
             );
         }
     }
+    loaded = true;
 };
+
+function unloadProperty(name) {
+    if (global[name] === window[name]) {
+        delete global[name];
+        if (originalProperties[name]) {
+            Object.defineProperty(global, name, originalProperties[name]);
+            delete originalProperties[name];
+        }
+    }
+}
 
 exports.unload = function() {
     if (typeof global == "undefined") return;
     var req = require;
     var cache = req("module")._cache;
     delete cache[__filename];
-    addedProperties.forEach(function(i) {
-        delete global[i];
+    Object.keys(originalProperties).forEach(function(name) {
+        unloadProperty(name);
     });
+    loaded = false;
 };
 
 exports.load();

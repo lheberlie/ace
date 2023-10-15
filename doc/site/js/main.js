@@ -98,6 +98,10 @@ $(function() {
     var firstLoad = true;
      
     tabs.find(tab_a_selector).click(function(e) {
+        if ($(this).attr("href").indexOf("http") === 0) {
+            return;
+        }
+
         e.preventDefault();
         if ($(this).attr("href") === "/") {
             window.location = "https://ace.c9.io";
@@ -148,12 +152,6 @@ $(function() {
         if (state.nav != oldState)
             $.bbq.pushState(state);
      });
-
-    $('#tabnav a[data-toggle="tab"]').on('shown', function (e) {
-        $(".tab-content .tab-pane.active .ace_editor").each(function(i, el){
-            el.env.onResize();
-        });
-    });
 
     $(window).on("hashchange", function(e) {
         _gaq.push(['_trackPageview',location.pathname + location.search  + location.hash]);

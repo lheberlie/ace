@@ -138,6 +138,40 @@ module.exports = {
         assert.position(range.end, 1, 12);
     },
 
+    "test: fallback to nonUnicode mode on edge cases": function() {
+        var session = new EditSession([
+            /* eslint-disable no-octal-escape*/
+            "string with \251 symbol",  // test octal escape sequence
+            "bracket ab{2}"  // test lone quantifier brackets
+        ]);
+
+        var search = new Search().set({
+            needle: "\\251",
+            regExp: true
+        });
+        var range = search.find(session);
+        assert.position(range.start, 0, 12);
+        assert.position(range.end, 0, 13);
+        
+        search.set({ needle: "ab\\{2}" });
+        range = search.find(session);
+        assert.position(range.start, 1, 8);
+        assert.position(range.end, 1, 13);
+    },
+
+    "test: whole word search should not match inside of words with unicode": function() {
+        var session = new EditSession(["𝓗ello𝓦orld", "𝓗ello 𝓦orld 123", "456"]);
+
+        var search = new Search().set({
+            needle: "𝓗ello",
+            wholeWord: true
+        });
+
+        var range = search.find(session);
+        assert.position(range.start, 1, 0);
+        assert.position(range.end, 1, 6);
+    },
+
     "test: find backwards": function() {
         var session = new EditSession(["juhu juhu juhu juhu"]);
         session.getSelection().moveCursorTo(0, 10);
@@ -483,6 +517,33 @@ module.exports = {
         check(2, 2, 3, 4);
         check(0, 2, 1, 4);
         check(4, 2, 5, 4);
+    },
+
+    "test: find all matches in a range" : function() {
+        var session = new EditSession([
+            "",
+            "    var myVar1 = 1; var myVar2 = 2; var myVar3 = 3;",
+            "    var myVar4 = 4; var myVar5 = 5; var myVar6 = 6;"
+        ]);
+
+        var search = new Search().set({
+            needle: "var",
+            backwards: true,
+            caseSensitive: true,
+            range: {start: {row: 1, column: 20}, end: {row: 2, column: 22}},
+            wholeWord: false,
+            regExp: false
+        });
+
+        var ranges = search.findAll(session);
+
+        assert.equal(ranges.length, 3);
+        assert.position(ranges[0].start, 1, 20);
+        assert.position(ranges[0].end, 1, 23);
+        assert.position(ranges[1].start, 1, 36);
+        assert.position(ranges[1].end, 1, 39);
+        assert.position(ranges[2].start, 2, 4);
+        assert.position(ranges[2].end, 2, 7);
     }
 };
 

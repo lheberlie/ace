@@ -1,6 +1,6 @@
 "use strict";
 
-var lang = require("../lib/lang");
+const deepCopy = require("../lib/deep_copy").deepCopy;
 
 var TextHighlightRules = function() {
 
@@ -64,7 +64,7 @@ var TextHighlightRules = function() {
         if (escapeRules) {
             var addRules = Array.prototype[append ? "push" : "unshift"];
             for (var i = 0; i < states.length; i++)
-                addRules.apply(this.$rules[states[i]], lang.deepCopy(escapeRules));
+                addRules.apply(this.$rules[states[i]], deepCopy(escapeRules));
         }
 
         if (!this.$embeds)
@@ -149,6 +149,8 @@ var TextHighlightRules = function() {
                 }
                 var includeName = typeof rule == "string" ? rule : rule.include;
                 if (includeName) {
+                    if (includeName === "$self")
+                        includeName = "start";
                     if (Array.isArray(includeName))
                         toInsert = includeName.map(function(x) { return rules[x]; });
                     else
