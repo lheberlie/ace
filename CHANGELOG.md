@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.31.1](https://github.com/ajaxorg/ace/compare/v1.31.0...v1.31.1) (2023-10-30)
+
+
+### Bug Fixes
+
+* improve yaml folding ([5c80e3c](https://github.com/ajaxorg/ace/commit/5c80e3cdd716b4ad26ee6958c9137278530b7816))
+
+## [1.31.0](https://github.com/ajaxorg/ace/compare/v1.30.0...v1.31.0) (2023-10-23)
+
+
+### Features
+
+* add nasal language ([#5342](https://github.com/ajaxorg/ace/issues/5342)) ([4fff99e](https://github.com/ajaxorg/ace/commit/4fff99e320539a1472ce0512cd1fd3e5fc7f2ca6))
+
+
+### Bug Fixes
+
+* doc tooltip not filtering properly ([e5034c7](https://github.com/ajaxorg/ace/commit/e5034c7b58fb47fe57b28dbb001e72a567ef9abe))
+
 ## [1.30.0](https://github.com/ajaxorg/ace/compare/v1.29.0...v1.30.0) (2023-10-13)
 
 
