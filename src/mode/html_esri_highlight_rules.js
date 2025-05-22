@@ -116,8 +116,49 @@ var HtmlEsriHighlightRules = function () {
                 regex: /https?:\/\/[-=*:+_.?&~{}@%#()\w\d/]+/,
                 next: "js-qstring"
             }
+        ],
+
+    });
+
+    // --------------------------------------------------------------------
+    // Add rules to the beginning of tag for arcgis-web-component and calcite-web-component
+    // --------------------------------------------------------------------
+    this.$rules["tag"].unshift(
+        {
+            token : function(start, tag) {
+                return ["meta.tag.punctuation.arcgis-web-component." + (start == "<" ? "" : "end-") + "tag-open.xml",
+                    "meta.tag.arcgis-web-component.tag-name.xml"];
+            },
+            regex : "(</?)(arcgis-[-_a-zA-Z0-9:.]+)",
+            next: "tag_stuff"
+        },
+        {
+            token : function(start, tag) {
+                return ["meta.tag.punctuation.calcite-web-component." + (start == "<" ? "" : "end-") + "tag-open.xml",
+                    "meta.tag.calcite-web-component.tag-name.xml"];
+            },
+            regex : "(</?)(calcite-[-_a-zA-Z0-9:.]+)",
+            next: "tag_stuff"
+        });
+    this.$rules["tag_stuff"].push({
+        token : "meta.tag.punctuation.arcgis-web-component.tag-close.xml", regex : "/?>", next : "start"
+    },{
+        token : "meta.tag.punctuation.calcite-web-component.tag-close.xml", regex : "/?>", next : "start"
+    });
+
+    // --------------------------------------------------------------------
+    // Add rules to the beginning of attribute_value for esri-guid-attribute-value
+    // --------------------------------------------------------------------
+    this.$rules["attribute_value"].unshift({
+        token: "string.esri-guid-attribute-value.xml",
+        regex: /["'][0-9a-fA-F]{32}/,
+        push : [
+            {token : "string.attribute-value.xml", regex: /["']/, next: "pop"},
+            {include : "attr_reference"},
+            {defaultToken : "string.attribute-value.xml"}
         ]
     });
+
 
     if (this.constructor === HtmlEsriHighlightRules) this.normalizeRules();
 };
