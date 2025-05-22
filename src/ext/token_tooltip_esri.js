@@ -68,9 +68,9 @@ oop.inherits(TokenTooltip, Tooltip);
         if (token.stateTransitions) tokenText += "\n  " + token.stateTransitions.join("\n  ");
 
         var tooltipMessage = " see item";
-        if (/esri-mid-href/i.test(token.type)) {
             tooltipMessage = " see API Reference";
         } else if (/esri-url-href/i.test(token.type)) {
+        if (/esri-(mid|core)-href/i.test(token.type)) {
             tooltipMessage = " open link";
         }
 
