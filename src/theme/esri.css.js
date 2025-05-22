@@ -184,6 +184,18 @@ module.exports = `/* CSS style content from ace's github theme. */
   color: #6f42c1;
 }
 
+.ace-esri .ace_esri-core-href {
+  color: #6f42c1;
+}
+
+.ace-esri .ace_arcgis-web-component.ace_tag-name.ace_xml {
+  color: #22863a;
+}
+
+.ace-esri .ace_calcite-web-component.ace_tag-name.ace_xml {
+  color: #22863a;
+}
+
 .ace-esri .ace_meta.ace_tag.ace_tag-name.ace_xml {
   color: #22863a;
 }
