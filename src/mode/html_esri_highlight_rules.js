@@ -33,6 +33,17 @@ var HtmlEsriHighlightRules = function () {
         },
         {
             token: "string",
+            regex: /"(?=@arcgis(\/\w+)+\.js")/,
+            next: "js-qqesri.core"
+        },
+        {
+            token: "string",
+            regex: /'(?=@arcgis(\/\w+)+\.js')/,
+            next: "js-qesri.core"
+        },
+
+        {
+            token: "string",
             regex: /"(?=https?[^"]+")/,
             next: "js-qqesri.url"
         },
@@ -64,6 +75,13 @@ var HtmlEsriHighlightRules = function () {
                 next: "js-qqstring"
             }
         ],
+        "js-qqesri.core": [
+            {
+                token: "esri-core-href",
+                regex: /@arcgis(\/\w+)+\.js/,
+                next: "js-qqstring"
+            }
+        ],
         "js-qesri.portal.item": [
             {
                 token: "esri-portal-item-id-href",
@@ -75,6 +93,13 @@ var HtmlEsriHighlightRules = function () {
             {
                 token: "esri-mid-href",
                 regex: /esri(\/\w+)+/,
+                next: "js-qstring"
+            }
+        ],
+        "js-qesri.core": [
+            {
+                token: "esri-core-href",
+                regex: /@arcgis(\/\w+)+\.js/,
                 next: "js-qstring"
             }
         ],
